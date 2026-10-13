@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" fill="none">
+  <!-- UPI Payment Card Frame -->
+  <rect width="300" height="300" rx="16" fill="#071A20" stroke="#00F5A0" stroke-width="2" />
+  
+  <!-- Header -->
+  <rect x="20" y="16" width="260" height="36" rx="6" fill="#050B10" stroke="#18333A" />
+  <text x="150" y="38" fill="#00F5A0" font-family="Rajdhani, sans-serif" font-size="16" font-weight="700" text-anchor="middle" letter-spacing="1.5">ARORA ESPORTS UPI</text>
+
+  <!-- QR Code Matrix Simulation -->
+  <rect x="45" y="65" width="210" height="170" rx="8" fill="#FFFFFF" />
+  
+  <!-- Corner Position Detectors -->
+  <rect x="60" y="80" width="40" height="40" fill="#050B10" />
+  <rect x="68" y="88" width="24" height="24" fill="#FFFFFF" />
+  <rect x="74" y="94" width="12" height="12" fill="#00F5A0" />
+
+  <rect x="200" y="80" width="40" height="40" fill="#050B10" />
+  <rect x="208" y="88" width="24" height="24" fill="#FFFFFF" />
+  <rect x="214" y="94" width="12" height="12" fill="#00F5A0" />
+
+  <rect x="60" y="180" width="40" height="40" fill="#050B10" />
+  <rect x="68" y="188" width="24" height="24" fill="#FFFFFF" />
+  <rect x="74" y="194" width="12" height="12" fill="#00F5A0" />
+
+  <!-- Data Bit Patterns -->
+  <rect x="110" y="80" width="80" height="12" fill="#050B10" />
+  <rect x="110" y="100" width="20" height="20" fill="#050B10" />
+  <rect x="140" y="100" width="50" height="10" fill="#071A20" />
+  <rect x="110" y="130" width="80" height="40" fill="#050B10" rx="4" />
+  <text x="150" y="155" fill="#00F5A0" font-family="Rajdhani, sans-serif" font-size="12" font-weight="bold" text-anchor="middle">SCAN &amp; PAY</text>
+  <rect x="200" y="130" width="40" height="20" fill="#050B10" />
+  <rect x="200" y="160" width="20" height="40" fill="#050B10" />
+  <rect x="110" y="180" width="40" height="40" fill="#050B10" />
+  <rect x="160" y="190" width="30" height="30" fill="#050B10" />
+
+  <!-- Footer Information -->
+  <text x="150" y="260" fill="#EAF4F4" font-family="Inter, sans-serif" font-size="13" font-weight="600" text-anchor="middle">UPI ID: aroraesports@okaxis</text>
+  <text x="150" y="278" fill="#9CA3AF" font-family="Inter, sans-serif" font-size="10" text-anchor="middle">Verify payee before submitting UTR</text>
+</svg>
