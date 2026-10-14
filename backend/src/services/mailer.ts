@@ -14,9 +14,15 @@ const isConfigured = Boolean(smtpUser && smtpPass && smtpUser !== 'your_gmail_ad
 
 const transporter = isConfigured
   ? nodemailer.createTransport({
+      pool: true,
+      maxConnections: 3,
+      maxMessages: 100,
       host: smtpHost,
       port: smtpPort,
       secure: smtpSecure,
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 20_000,
       auth: {
         user: smtpUser,
         pass: smtpPass,
@@ -32,6 +38,7 @@ export interface SendMailOptions {
 }
 
 export async function sendEmail(options: SendMailOptions): Promise<{ success: boolean; error?: string }> {
+  const startedAt = Date.now();
   try {
     if (transporter) {
       await transporter.sendMail({
@@ -41,7 +48,7 @@ export async function sendEmail(options: SendMailOptions): Promise<{ success: bo
         html: options.html,
         text: options.text,
       });
-      console.log(`[SMTP Mailer] Email sent successfully to ${options.to} via Gmail SMTP.`);
+      console.log(`[SMTP Mailer] Email sent to ${options.to} in ${Date.now() - startedAt}ms.`);
       return { success: true };
     } else {
       // Local development fallback: Log formatted email
@@ -56,7 +63,7 @@ export async function sendEmail(options: SendMailOptions): Promise<{ success: bo
       return { success: true };
     }
   } catch (error: any) {
-    console.error(`[SMTP Mailer Error] Failed sending to ${options.to}:`, error.message);
+    console.error(`[SMTP Mailer Error] Failed sending to ${options.to} after ${Date.now() - startedAt}ms:`, error.message);
     return { success: false, error: error.message };
   }
 }

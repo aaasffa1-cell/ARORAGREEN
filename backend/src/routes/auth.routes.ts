@@ -57,7 +57,10 @@ router.post('/send-otp', sendOtpLimiter, async (req: Request, res: Response): Pr
     const { otp } = await createOtpChallenge(email, ip);
 
     // Send via Nodemailer (Gmail SMTP or dev fallback)
-    await sendOtpEmail(email, otp);
+    const mailResult = await sendOtpEmail(email, otp);
+    if (!mailResult.success) {
+      throw new Error(`Unable to send verification email: ${mailResult.error || 'SMTP delivery failed.'}`);
+    }
 
     // Generic safe response to prevent email enumeration
     res.json({
