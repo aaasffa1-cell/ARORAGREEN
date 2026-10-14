@@ -1,17 +1,22 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "installCommand": "npm --prefix frontend install",
-  "buildCommand": "cd frontend && npm install && npm run build",
+  "installCommand": "npm install && npm --prefix frontend install && npm --prefix backend install",
+  "buildCommand": "cd frontend && npm run build",
   "outputDirectory": "frontend/dist",
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     {
       "source": "/api",
-      "destination": "https://aroragreen.onrender.com/api"
+      "destination": "/api"
     },
     {
       "source": "/api/(.*)",
-      "destination": "https://aroragreen.onrender.com/api/$1"
+      "destination": "/api"
     },
     {
       "source": "/((?!api(?:/|$)).*)",

@@ -99,7 +99,7 @@ app.get(['/api/health/db', '/health/db'], async (req: Request, res: Response) =>
       status: 'error',
       name: err.name,
       message: errorDetails,
-      tip: errorDetails.includes('ECONNREFUSED') ? 'DATABASE_URL is missing or pointing to localhost in Render environment variables' : undefined,
+      tip: errorDetails.includes('ECONNREFUSED') ? 'DATABASE_URL is missing or pointing to localhost in environment variables' : undefined,
     });
   }
 });

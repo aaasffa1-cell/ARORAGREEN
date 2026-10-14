@@ -8,11 +8,11 @@ dotenv.config();
 // ARORA ESPORTS — Dual Email Provider (Resend + Nodemailer)
 // ============================================================
 // Priority: Resend (HTTPS API) > Nodemailer (SMTP) > Console Log
-// Resend works on Render free tier (no port blocking).
-// Nodemailer/SMTP works locally or on paid hosting.
+// Resend works seamlessly on Vercel / Cloud serverless environments.
+// Nodemailer/SMTP works locally or when SMTP credentials are provided.
 // ============================================================
 
-// Resend config (HTTPS-based — works on Render free tier)
+// Resend config (HTTPS-based — ideal for serverless & cloud deployments)
 const resendApiKey = process.env.RESEND_API_KEY;
 const resendFrom = process.env.RESEND_FROM || process.env.EMAIL_FROM || 'ARORA ESPORTS <onboarding@resend.dev>';
 const isResendConfigured = Boolean(resendApiKey && resendApiKey.startsWith('re_'));
@@ -96,7 +96,7 @@ export interface SendMailOptions {
 export async function sendEmail(options: SendMailOptions): Promise<{ success: boolean; error?: string }> {
   const startedAt = Date.now();
 
-  // Priority 1: Resend (HTTPS API — works on Render free tier)
+  // Priority 1: Resend (HTTPS API — works on Vercel serverless without socket timeouts)
   if (resend) {
     try {
       const { data, error } = await resend.emails.send({

@@ -97,7 +97,9 @@ Under the **Environment Variables** section in the Vercel import page, add the f
 | `NODE_ENV` | `production` | Enables production optimizations and security |
 | `DATABASE_URL` | `postgresql://...neon.tech/neondb?sslmode=require` | Your Neon / Supabase database connection string |
 | `JWT_SECRET` | *(Random 32+ character string)* | Secret for auth tokens & session signing |
-| `SMTP_HOST` | `smtp.gmail.com` | SMTP host for OTP verification emails |
+| `RESEND_API_KEY` | `re_...` *(Recommended)* | Resend API key for fast serverless email delivery |
+| `RESEND_FROM` | `ARORA ESPORTS <onboarding@resend.dev>` | Verified sender display name |
+| `SMTP_HOST` | `smtp.gmail.com` *(Optional fallback)* | SMTP host for OTP verification emails |
 | `SMTP_PORT` | `587` | SMTP port |
 | `SMTP_SECURE` | `false` | TLS setting |
 | `SMTP_USER` | `your_gmail@gmail.com` | Your Gmail address |

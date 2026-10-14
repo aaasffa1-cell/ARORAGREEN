@@ -1,25 +1,24 @@
-const PROD_BACKEND_URL = 'https://aroragreen.onrender.com/api';
-
 // Base API URL:
 // 1. If explicitly set via VITE_API_BASE_URL, use that.
-// 2. If running on any hosted domain in browser (e.g. Vercel, production), use the deployed Render backend URL.
-// 3. If running on local development (localhost / 127.0.0.1), use 'http://localhost:4000/api'.
+// 2. In production / hosted environments (e.g. Vercel), default to relative '/api'
+//    (same-origin unified deployment with zero CORS issues).
+// 3. In local development (localhost / 127.0.0.1), use 'http://localhost:4000/api'.
 function getApiBaseUrl(): string {
   const envUrl = import.meta.env.VITE_API_BASE_URL;
   if (envUrl && typeof envUrl === 'string' && envUrl.trim() !== '') {
     return envUrl.trim().replace(/\/+$/, '');
   }
 
-  // Runtime browser domain check: On Vercel or any non-localhost domain, connect directly to Render backend
+  // Runtime browser domain check: On Vercel or any hosted domain, use relative '/api' on same origin
   if (typeof window !== 'undefined' && window.location) {
     const hostname = window.location.hostname;
     const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
     if (!isLocal) {
-      return PROD_BACKEND_URL;
+      return '/api';
     }
   }
 
-  return import.meta.env.PROD ? PROD_BACKEND_URL : 'http://localhost:4000/api';
+  return import.meta.env.PROD ? '/api' : 'http://localhost:4000/api';
 }
 
 const API_BASE = getApiBaseUrl().replace(/\/+$/, '');
