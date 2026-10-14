@@ -70,8 +70,7 @@ router.post('/send-otp', sendOtpLimiter, async (req: Request, res: Response): Pr
   } catch (err: any) {
     console.error('[Send OTP Error]:', err);
     res.status(500).json({ 
-      error: 'Failed to process verification code request. Please try again.',
-      details: err.message || String(err)
+      error: 'Failed to process verification code request. Please try again.'
     });
   }
 });
