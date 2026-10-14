@@ -33,13 +33,13 @@ app.use(
 // CORS configuration supporting credentials (cookies) across localhost and Vercel domains
 app.use(
   cors({
-    origin: (origin, callback) => {
+    origin: (origin: any, callback: any) => {
       // Allow requests with no origin (like mobile apps, curl, or same-origin serverless rewrites)
       if (!origin) return callback(null, true);
 
       const configuredOrigins = (process.env.FRONTEND_URL || '')
         .split(',')
-        .map((o) => o.trim())
+        .map((o: string) => o.trim())
         .filter(Boolean);
 
       const isAllowed =

@@ -22,7 +22,7 @@ async function runMigrations() {
     }
 
     const files = fs.readdirSync(migrationsDir)
-      .filter((file) => file.endsWith('.sql'))
+      .filter((file: string) => file.endsWith('.sql'))
       .sort();
 
     for (const file of files) {
