@@ -8,15 +8,15 @@
     "backend"
   ],
   "scripts": {
-    "build": "npm run build --workspace=frontend && npm run build --workspace=backend",
-    "build:frontend": "npm run build --workspace=frontend",
-    "build:backend": "npm run build --workspace=backend",
-    "dev:frontend": "npm run dev --workspace=frontend",
-    "dev:backend": "npm run dev --workspace=backend",
-    "migrate": "npm run migrate --workspace=backend",
-    "seed": "npm run seed --workspace=backend",
-    "provision:admin": "npm run provision:admin --workspace=backend",
-    "vercel-build": "npm run build --workspace=frontend"
+    "build": "npm --prefix frontend run build && npm --prefix backend run build",
+    "build:frontend": "npm --prefix frontend run build",
+    "build:backend": "npm --prefix backend run build",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend run dev",
+    "migrate": "npm --prefix backend run migrate",
+    "seed": "npm --prefix backend run seed",
+    "provision:admin": "npm --prefix backend run provision:admin",
+    "vercel-build": "cd frontend && npm install && npm run build"
   },
   "dependencies": {
     "@types/cookie-parser": "^1.4.8",
