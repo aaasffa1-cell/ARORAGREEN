@@ -12,11 +12,11 @@
   "rewrites": [
     {
       "source": "/api",
-      "destination": "/api"
+      "destination": "https://aroragreen.onrender.com/api"
     },
     {
       "source": "/api/(.*)",
-      "destination": "/api"
+      "destination": "https://aroragreen.onrender.com/api/$1"
     },
     {
       "source": "/((?!api(?:/|$)).*)",

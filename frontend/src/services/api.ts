@@ -1,6 +1,8 @@
+const PROD_BACKEND_URL = 'https://aroragreen.onrender.com/api';
+
 // Base API URL:
 // 1. If explicitly set via VITE_API_BASE_URL, use that.
-// 2. If running on any hosted domain in browser (e.g. Vercel, production), use relative '/api' so all devices can connect.
+// 2. If running on any hosted domain in browser (e.g. Vercel, production), use the deployed Render backend URL.
 // 3. If running on local development (localhost / 127.0.0.1), use 'http://localhost:4000/api'.
 function getApiBaseUrl(): string {
   const envUrl = import.meta.env.VITE_API_BASE_URL;
@@ -8,16 +10,16 @@ function getApiBaseUrl(): string {
     return envUrl.trim().replace(/\/+$/, '');
   }
 
-  // Runtime browser domain check: On Vercel or any non-localhost domain, always use relative '/api'
+  // Runtime browser domain check: On Vercel or any non-localhost domain, connect directly to Render backend
   if (typeof window !== 'undefined' && window.location) {
     const hostname = window.location.hostname;
     const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
     if (!isLocal) {
-      return '/api';
+      return PROD_BACKEND_URL;
     }
   }
 
-  return import.meta.env.PROD ? '/api' : 'http://localhost:4000/api';
+  return import.meta.env.PROD ? PROD_BACKEND_URL : 'http://localhost:4000/api';
 }
 
 const API_BASE = getApiBaseUrl().replace(/\/+$/, '');
@@ -25,8 +27,12 @@ const API_BASE = getApiBaseUrl().replace(/\/+$/, '');
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${API_BASE}${cleanEndpoint}`;
+
+  // Support Authorization Bearer token header in addition to cookies for cross-domain reliability
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('arora_session_token') : null;
   const headers = {
     'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers || {}),
   };
 
@@ -52,16 +58,27 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ email }),
     }),
-    verifyOtp: (email: string, otp: string) => request<{ success: boolean; user: any }>('/auth/verify-otp', {
-      method: 'POST',
-      body: JSON.stringify({ email, otp }),
-    }),
+    verifyOtp: async (email: string, otp: string) => {
+      const res = await request<{ success: boolean; session_token?: string; user: any }>('/auth/verify-otp', {
+        method: 'POST',
+        body: JSON.stringify({ email, otp }),
+      });
+      if (res.session_token && typeof localStorage !== 'undefined') {
+        localStorage.setItem('arora_session_token', res.session_token);
+      }
+      return res;
+    },
     me: () => request<{ authenticated: boolean; user: any }>('/auth/me'),
     updateProfile: (profile: any) => request<{ success: boolean; user: any }>('/auth/update-profile', {
       method: 'POST',
       body: JSON.stringify(profile),
     }),
-    logout: () => request<{ success: boolean }>('/auth/logout', { method: 'POST' }),
+    logout: async () => {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('arora_session_token');
+      }
+      return request<{ success: boolean }>('/auth/logout', { method: 'POST' });
+    },
   },
 
   // Tournaments

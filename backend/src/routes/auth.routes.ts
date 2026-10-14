@@ -140,18 +140,19 @@ router.post('/verify-otp', verifyOtpLimiter, async (req: Request, res: Response)
 
       await client.query('COMMIT');
 
-      // Set HTTP-only secure cookie
-      const isProduction = process.env.NODE_ENV === 'production' || !!process.env.VERCEL;
+      // Set HTTP-only secure cookie (using sameSite: 'none' in production for cross-site Render <-> Vercel requests)
+      const isProduction = process.env.NODE_ENV === 'production' || !!process.env.VERCEL || !!process.env.RENDER;
       res.cookie('arora_session', sessionToken, {
         httpOnly: true,
         secure: isProduction,
-        sameSite: 'lax',
+        sameSite: isProduction ? 'none' : 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000,
         path: '/',
       });
 
       res.json({
         success: true,
+        session_token: sessionToken,
         user: {
           id: user.id,
           email: user.email,
