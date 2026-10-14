@@ -4,6 +4,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { authenticateSession } from './middleware/auth';
+import { pool } from './db/pool';
 
 import authRouter from './routes/auth.routes';
 import tournamentsRouter from './routes/tournaments.routes';
@@ -77,6 +78,24 @@ app.get(['/api/health', '/health', '/api', '/'], (req: Request, res: Response) =
     serverless: !!process.env.VERCEL,
     timestamp: new Date().toISOString(),
   });
+});
+
+// Database connectivity healthcheck
+app.get(['/api/health/db', '/health/db'], async (req: Request, res: Response) => {
+  try {
+    const dbRes = await pool.query("SELECT current_database(), current_user, count(*)::int as table_count FROM information_schema.tables WHERE table_schema = 'public'");
+    res.json({
+      status: 'connected',
+      database: dbRes.rows[0].current_database,
+      user: dbRes.rows[0].current_user,
+      table_count: dbRes.rows[0].table_count,
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      status: 'error',
+      message: err.message,
+    });
+  }
 });
 
 // Mount Routes (supporting both /api/* and root rewrites)
