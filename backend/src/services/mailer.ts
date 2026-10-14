@@ -1,38 +1,33 @@
 import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
+// ============================================================
+// ARORA ESPORTS — Dual Email Provider (Resend + Nodemailer)
+// ============================================================
+// Priority: Resend (HTTPS API) > Nodemailer (SMTP) > Console Log
+// Resend works on Render free tier (no port blocking).
+// Nodemailer/SMTP works locally or on paid hosting.
+// ============================================================
+
+// Resend config (HTTPS-based — works on Render free tier)
+const resendApiKey = process.env.RESEND_API_KEY;
+const resendFrom = process.env.RESEND_FROM || process.env.EMAIL_FROM || 'ARORA ESPORTS <onboarding@resend.dev>';
+const isResendConfigured = Boolean(resendApiKey && resendApiKey.startsWith('re_'));
+const resend = isResendConfigured ? new Resend(resendApiKey) : null;
+
+// Nodemailer SMTP config (fallback for local dev or paid hosts)
 const smtpUser = process.env.SMTP_USER;
 const smtpPass = process.env.SMTP_PASS;
 const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
 const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
 const smtpSecure = process.env.SMTP_SECURE === 'true';
-const emailFrom = process.env.EMAIL_FROM || 'ARORA ESPORTS <noreply@aroraesports.com>';
+const smtpFrom = process.env.EMAIL_FROM || 'ARORA ESPORTS <noreply@aroraesports.com>';
+const isSmtpConfigured = Boolean(smtpUser && smtpPass && smtpUser !== 'your_gmail_address@gmail.com');
 
-const isConfigured = Boolean(smtpUser && smtpPass && smtpUser !== 'your_gmail_address@gmail.com');
-
-export function getSmtpStatus(): { configured: boolean; host: string; port: number; user: string; secure: boolean } {
-  return {
-    configured: isConfigured,
-    host: smtpHost,
-    port: smtpPort,
-    user: smtpUser ? smtpUser.substring(0, 3) + '***@' + (smtpUser.split('@')[1] || '?') : '(not set)',
-    secure: smtpSecure,
-  };
-}
-
-export async function verifySmtpConnection(): Promise<{ ok: boolean; error?: string }> {
-  if (!transporter) return { ok: false, error: 'SMTP not configured — SMTP_USER or SMTP_PASS missing in environment variables' };
-  try {
-    await transporter.verify();
-    return { ok: true };
-  } catch (err: any) {
-    return { ok: false, error: err.message };
-  }
-}
-
-const transporter = isConfigured
+const transporter = isSmtpConfigured
   ? nodemailer.createTransport({
       pool: true,
       maxConnections: 3,
@@ -50,6 +45,47 @@ const transporter = isConfigured
     })
   : null;
 
+// ============================================================
+// Diagnostic Helpers
+// ============================================================
+
+export function getSmtpStatus(): {
+  provider: string;
+  resend_configured: boolean;
+  smtp_configured: boolean;
+  host: string;
+  port: number;
+  user: string;
+  secure: boolean;
+} {
+  return {
+    provider: isResendConfigured ? 'resend' : isSmtpConfigured ? 'nodemailer-smtp' : 'console-fallback',
+    resend_configured: isResendConfigured,
+    smtp_configured: isSmtpConfigured,
+    host: smtpHost,
+    port: smtpPort,
+    user: smtpUser ? smtpUser.substring(0, 3) + '***@' + (smtpUser.split('@')[1] || '?') : '(not set)',
+    secure: smtpSecure,
+  };
+}
+
+export async function verifySmtpConnection(): Promise<{ ok: boolean; error?: string }> {
+  if (isResendConfigured) {
+    return { ok: true, error: undefined };
+  }
+  if (!transporter) return { ok: false, error: 'Neither Resend nor SMTP configured — set RESEND_API_KEY or SMTP_USER/SMTP_PASS' };
+  try {
+    await transporter.verify();
+    return { ok: true };
+  } catch (err: any) {
+    return { ok: false, error: err.message };
+  }
+}
+
+// ============================================================
+// Core Send Function (Resend → SMTP → Console)
+// ============================================================
+
 export interface SendMailOptions {
   to: string;
   subject: string;
@@ -59,10 +95,36 @@ export interface SendMailOptions {
 
 export async function sendEmail(options: SendMailOptions): Promise<{ success: boolean; error?: string }> {
   const startedAt = Date.now();
-  try {
-    if (transporter) {
+
+  // Priority 1: Resend (HTTPS API — works on Render free tier)
+  if (resend) {
+    try {
+      const { data, error } = await resend.emails.send({
+        from: resendFrom,
+        to: [options.to],
+        subject: options.subject,
+        html: options.html,
+        text: options.text,
+      });
+
+      if (error) {
+        console.error(`[Resend Error] Failed sending to ${options.to}:`, error.message);
+        return { success: false, error: error.message };
+      }
+
+      console.log(`[Resend] Email sent to ${options.to} in ${Date.now() - startedAt}ms (id: ${data?.id})`);
+      return { success: true };
+    } catch (err: any) {
+      console.error(`[Resend Error] Failed sending to ${options.to}:`, err.message);
+      return { success: false, error: err.message };
+    }
+  }
+
+  // Priority 2: Nodemailer SMTP (local dev or paid hosts)
+  if (transporter) {
+    try {
       await transporter.sendMail({
-        from: emailFrom,
+        from: smtpFrom,
         to: options.to,
         subject: options.subject,
         html: options.html,
@@ -70,23 +132,27 @@ export async function sendEmail(options: SendMailOptions): Promise<{ success: bo
       });
       console.log(`[SMTP Mailer] Email sent to ${options.to} in ${Date.now() - startedAt}ms.`);
       return { success: true };
-    } else {
-      // Local development fallback: Log formatted email
-      console.log('\n=================== [ARORA ESPORTS EMAIL NOTICE] ===================');
-      console.log(`To: ${options.to}`);
-      console.log(`Subject: ${options.subject}`);
-      console.log(`(Configure SMTP_USER & SMTP_PASS in backend/.env for live Gmail delivery)`);
-      if (options.text) {
-        console.log(`Text Body:\n${options.text}`);
-      }
-      console.log('====================================================================\n');
-      return { success: true };
+    } catch (error: any) {
+      console.error(`[SMTP Mailer Error] Failed sending to ${options.to} after ${Date.now() - startedAt}ms:`, error.message);
+      return { success: false, error: error.message };
     }
-  } catch (error: any) {
-    console.error(`[SMTP Mailer Error] Failed sending to ${options.to} after ${Date.now() - startedAt}ms:`, error.message);
-    return { success: false, error: error.message };
   }
+
+  // Priority 3: Console fallback (local development without any email provider)
+  console.log('\n=================== [ARORA ESPORTS EMAIL NOTICE] ===================');
+  console.log(`To: ${options.to}`);
+  console.log(`Subject: ${options.subject}`);
+  console.log(`(Configure RESEND_API_KEY or SMTP_USER & SMTP_PASS for live email delivery)`);
+  if (options.text) {
+    console.log(`Text Body:\n${options.text}`);
+  }
+  console.log('====================================================================\n');
+  return { success: true };
 }
+
+// ============================================================
+// Specific Email Templates
+// ============================================================
 
 export async function sendOtpEmail(toEmail: string, otp: string): Promise<{ success: boolean; error?: string }> {
   const subject = 'Your ARORA ESPORTS Login Verification Code';
