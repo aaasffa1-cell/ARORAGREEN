@@ -277,17 +277,32 @@ export const TournamentManagement: React.FC = () => {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold uppercase text-icewhite">Max Squad Capacity *</label>
-              <input
-                type="number"
-                required
-                min={2}
-                max={50}
-                value={formData.max_squads}
-                onChange={(e) => setFormData({ ...formData, max_squads: e.target.value })}
+              <label className="text-xs font-bold uppercase text-icewhite">Game Mode *</label>
+              <select
+                value={formData.game_mode}
+                onChange={(e) => setFormData({ ...formData, game_mode: e.target.value })}
                 className="w-full bg-midnight border border-aroraborder rounded-lg px-3 py-2 text-xs text-icewhite"
-              />
+              >
+                <option value="Battle Royale Squad">Battle Royale Squad</option>
+                <option value="Battle Royale Duo">Battle Royale Duo</option>
+                <option value="Battle Royale Solo">Battle Royale Solo</option>
+                <option value="Clash Squad">Clash Squad</option>
+                <option value="Lone Wolf">Lone Wolf</option>
+              </select>
             </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-bold uppercase text-icewhite">Max Squad Capacity *</label>
+            <input
+              type="number"
+              required
+              min={2}
+              max={50}
+              value={formData.max_squads}
+              onChange={(e) => setFormData({ ...formData, max_squads: e.target.value })}
+              className="w-full bg-midnight border border-aroraborder rounded-lg px-3 py-2 text-xs text-icewhite"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
