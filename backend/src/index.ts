@@ -91,9 +91,14 @@ app.get(['/api/health/db', '/health/db'], async (req: Request, res: Response) =>
       table_count: dbRes.rows[0].table_count,
     });
   } catch (err: any) {
+    const errorDetails = err.name === 'AggregateError' 
+      ? (err.errors || []).map((e: any) => e.message || e.code).join(' | ') 
+      : (err.message || String(err));
     res.status(500).json({
       status: 'error',
-      message: err.message,
+      name: err.name,
+      message: errorDetails,
+      tip: errorDetails.includes('ECONNREFUSED') ? 'DATABASE_URL is missing or pointing to localhost in Render environment variables' : undefined,
     });
   }
 });
