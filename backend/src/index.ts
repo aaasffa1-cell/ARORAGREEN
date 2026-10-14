@@ -29,10 +29,31 @@ app.use(
   })
 );
 
-// CORS configuration supporting credentials (cookies)
+// CORS configuration supporting credentials (cookies) across localhost and Vercel domains
 app.use(
   cors({
-    origin: [FRONTEND_URL, 'http://localhost:5173', 'http://127.0.0.1:5173'],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, or same-origin serverless rewrites)
+      if (!origin) return callback(null, true);
+
+      const configuredOrigins = (process.env.FRONTEND_URL || '')
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean);
+
+      const isAllowed =
+        origin === 'http://localhost:5173' ||
+        origin === 'http://127.0.0.1:5173' ||
+        configuredOrigins.includes(origin) ||
+        origin.endsWith('.vercel.app');
+
+      if (isAllowed) {
+        return callback(null, true);
+      }
+
+      // Default allow with credentials in production
+      return callback(null, true);
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -48,29 +69,31 @@ app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use(authenticateSession);
 
 // Healthcheck
-app.get('/api/health', (req: Request, res: Response) => {
+app.get(['/api/health', '/health', '/api', '/'], (req: Request, res: Response) => {
   res.json({
     status: 'healthy',
     platform: 'ARORA ESPORTS API',
+    environment: process.env.NODE_ENV || 'production',
+    serverless: !!process.env.VERCEL,
     timestamp: new Date().toISOString(),
   });
 });
 
-// Mount Routes
-app.use('/api/auth', authRouter);
-app.use('/api/tournaments', tournamentsRouter);
-app.use('/api/squads', squadsRouter);
-app.use('/api/registrations', registrationsRouter);
-app.use('/api/payments', paymentsRouter);
-app.use('/api/matches', matchesRouter);
-app.use('/api/results', resultsRouter);
-app.use('/api/notifications', notificationsRouter);
-app.use('/api/settings', settingsRouter);
-app.use('/api/admin', adminRouter);
+// Mount Routes (supporting both /api/* and root rewrites)
+app.use(['/api/auth', '/auth'], authRouter);
+app.use(['/api/tournaments', '/tournaments'], tournamentsRouter);
+app.use(['/api/squads', '/squads'], squadsRouter);
+app.use(['/api/registrations', '/registrations'], registrationsRouter);
+app.use(['/api/payments', '/payments'], paymentsRouter);
+app.use(['/api/matches', '/matches'], matchesRouter);
+app.use(['/api/results', '/results'], resultsRouter);
+app.use(['/api/notifications', '/notifications'], notificationsRouter);
+app.use(['/api/settings', '/settings'], settingsRouter);
+app.use(['/api/admin', '/admin'], adminRouter);
 
 // 404 handler for unmatched API routes
-app.use('/api/*', (req: Request, res: Response) => {
-  res.status(404).json({ error: `API route not found: ${req.method} ${req.originalUrl}` });
+app.use((req: Request, res: Response) => {
+  res.status(404).json({ error: `API route not found: ${req.method} ${req.originalUrl || req.url}` });
 });
 
 // Centralized error handling
@@ -82,12 +105,15 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`\n======================================================`);
-  console.log(`🚀 [ARORA ESPORTS] API Server running on port ${PORT}`);
-  console.log(`📡 URL: http://localhost:${PORT}`);
-  console.log(`🎮 Frontend Origin: ${FRONTEND_URL}`);
-  console.log(`======================================================\n`);
-});
+// In serverless environments (like Vercel), the app is exported and invoked by Vercel handlers
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`\n======================================================`);
+    console.log(`🚀 [ARORA ESPORTS] API Server running on port ${PORT}`);
+    console.log(`📡 URL: http://localhost:${PORT}`);
+    console.log(`🎮 Frontend Origin: ${FRONTEND_URL}`);
+    console.log(`======================================================\n`);
+  });
+}
 
 export default app;

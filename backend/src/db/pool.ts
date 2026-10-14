@@ -5,17 +5,22 @@ dotenv.config();
 
 const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/arora_esports';
 
-// Handle SSL for Neon PostgreSQL and cloud hosted DBs
-const isCloudDatabase = connectionString.includes('neon.tech') || 
-                        connectionString.includes('supabase.co') || 
-                        connectionString.includes('sslmode=require');
+// Handle SSL for Neon PostgreSQL, Supabase, and cloud hosted DBs
+const isCloudDatabase = 
+  connectionString.includes('neon.tech') || 
+  connectionString.includes('supabase.co') || 
+  connectionString.includes('sslmode=require') ||
+  process.env.NODE_ENV === 'production' ||
+  !!process.env.VERCEL;
 
 export const pool = new Pool({
   connectionString,
-  ssl: isCloudDatabase ? { rejectUnauthorized: false } : undefined,
-  max: 20,
+  ssl: isCloudDatabase && !connectionString.includes('localhost') && !connectionString.includes('127.0.0.1')
+    ? { rejectUnauthorized: false }
+    : undefined,
+  max: process.env.VERCEL ? 5 : 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
+  connectionTimeoutMillis: 10000,
 });
 
 pool.on('error', (err) => {

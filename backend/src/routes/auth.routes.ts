@@ -141,7 +141,7 @@ router.post('/verify-otp', verifyOtpLimiter, async (req: Request, res: Response)
       await client.query('COMMIT');
 
       // Set HTTP-only secure cookie
-      const isProduction = process.env.NODE_ENV === 'production';
+      const isProduction = process.env.NODE_ENV === 'production' || !!process.env.VERCEL;
       res.cookie('arora_session', sessionToken, {
         httpOnly: true,
         secure: isProduction,

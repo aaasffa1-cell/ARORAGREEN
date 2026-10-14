@@ -25,6 +25,7 @@ lerna-debug.log*
 # Build artifacts & compiled code
 dist/
 build/
+.vercel/
 *.tsbuildinfo
 
 # OS & Editor files

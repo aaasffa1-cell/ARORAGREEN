@@ -1,7 +1,14 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api';
+// Base API URL: In production builds, default to relative '/api' unless explicitly overridden
+const rawBase =
+  import.meta.env.VITE_API_BASE_URL !== undefined && import.meta.env.VITE_API_BASE_URL !== ''
+    ? import.meta.env.VITE_API_BASE_URL
+    : (import.meta.env.PROD ? '/api' : 'http://localhost:4000/api');
+
+const API_BASE = rawBase.replace(/\/+$/, '');
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE}${endpoint}`;
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = `${API_BASE}${cleanEndpoint}`;
   const headers = {
     'Content-Type': 'application/json',
     ...(options.headers || {}),
