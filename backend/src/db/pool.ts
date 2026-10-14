@@ -3,12 +3,18 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/arora_esports';
+const connectionString = 
+  process.env.DATABASE_URL || 
+  process.env.POSTGRES_URL || 
+  process.env.POSTGRES_PRISMA_URL || 
+  process.env.POSTGRES_URL_NON_POOLING || 
+  'postgresql://postgres:postgres@localhost:5432/arora_esports';
 
-// Handle SSL for Neon PostgreSQL, Supabase, and cloud hosted DBs
+// Handle SSL for Neon PostgreSQL, Supabase, Vercel Postgres, and cloud hosted DBs
 const isCloudDatabase = 
   connectionString.includes('neon.tech') || 
   connectionString.includes('supabase.co') || 
+  connectionString.includes('vercel-storage.com') ||
   connectionString.includes('sslmode=require') ||
   process.env.NODE_ENV === 'production' ||
   !!process.env.VERCEL;
