@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { authenticateSession } from './middleware/auth';
 import { pool } from './db/pool';
+import { getSmtpStatus, verifySmtpConnection } from './services/mailer';
 
 import authRouter from './routes/auth.routes';
 import tournamentsRouter from './routes/tournaments.routes';
@@ -101,6 +102,16 @@ app.get(['/api/health/db', '/health/db'], async (req: Request, res: Response) =>
       tip: errorDetails.includes('ECONNREFUSED') ? 'DATABASE_URL is missing or pointing to localhost in Render environment variables' : undefined,
     });
   }
+});
+
+// SMTP connectivity healthcheck
+app.get(['/api/health/smtp', '/health/smtp'], async (req: Request, res: Response) => {
+  const status = getSmtpStatus();
+  const verification = await verifySmtpConnection();
+  res.json({
+    smtp: status,
+    connection_test: verification,
+  });
 });
 
 // Mount Routes (supporting both /api/* and root rewrites)

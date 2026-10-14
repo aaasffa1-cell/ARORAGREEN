@@ -12,6 +12,26 @@ const emailFrom = process.env.EMAIL_FROM || 'ARORA ESPORTS <noreply@aroraesports
 
 const isConfigured = Boolean(smtpUser && smtpPass && smtpUser !== 'your_gmail_address@gmail.com');
 
+export function getSmtpStatus(): { configured: boolean; host: string; port: number; user: string; secure: boolean } {
+  return {
+    configured: isConfigured,
+    host: smtpHost,
+    port: smtpPort,
+    user: smtpUser ? smtpUser.substring(0, 3) + '***@' + (smtpUser.split('@')[1] || '?') : '(not set)',
+    secure: smtpSecure,
+  };
+}
+
+export async function verifySmtpConnection(): Promise<{ ok: boolean; error?: string }> {
+  if (!transporter) return { ok: false, error: 'SMTP not configured — SMTP_USER or SMTP_PASS missing in environment variables' };
+  try {
+    await transporter.verify();
+    return { ok: true };
+  } catch (err: any) {
+    return { ok: false, error: err.message };
+  }
+}
+
 const transporter = isConfigured
   ? nodemailer.createTransport({
       pool: true,
