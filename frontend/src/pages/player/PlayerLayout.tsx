@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, Outlet, Navigate } from 'react-router-dom';
+import { NavLink, Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard,
@@ -17,6 +17,7 @@ import {
 
 export const PlayerLayout: React.FC = () => {
   const { user, loading, logout } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -27,7 +28,8 @@ export const PlayerLayout: React.FC = () => {
   }
 
   if (!user) {
-    return <Navigate to="/login?redirect=/player" replace />;
+    const targetUrl = location.pathname + location.search;
+    return <Navigate to={`/login?redirect=${encodeURIComponent(targetUrl)}`} replace />;
   }
 
   const navItems = [

@@ -43,6 +43,8 @@ import { NotificationManagement } from './pages/admin/NotificationManagement';
 import { WebsiteSettings } from './pages/admin/WebsiteSettings';
 import { AuditLogs } from './pages/admin/AuditLogs';
 
+import { ProtectedRoute } from './components/common/ProtectedRoute';
+
 export const App: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen bg-midnight text-icewhite">
@@ -62,8 +64,15 @@ export const App: React.FC = () => {
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsConditions />} />
 
-          {/* Player Dashboard Routes */}
-          <Route path="/player" element={<PlayerLayout />}>
+          {/* Player Dashboard Routes (Protected: Requires Authenticated Player) */}
+          <Route
+            path="/player"
+            element={
+              <ProtectedRoute>
+                <PlayerLayout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<PlayerDashboard />} />
             <Route path="my-tournaments" element={<MyTournaments />} />
             <Route path="my-squad" element={<MySquad />} />
@@ -75,8 +84,15 @@ export const App: React.FC = () => {
             <Route path="settings" element={<AccountSettings />} />
           </Route>
 
-          {/* Admin Operations Routes */}
-          <Route path="/admin" element={<AdminLayout />}>
+          {/* Admin Operations Routes (Protected: Requires Authenticated Admin) */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<AdminOverview />} />
             <Route path="tournaments" element={<TournamentManagement />} />
             <Route path="registrations" element={<RegistrationManagement />} />

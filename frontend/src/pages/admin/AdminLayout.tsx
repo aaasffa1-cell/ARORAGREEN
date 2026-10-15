@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, Outlet, Navigate } from 'react-router-dom';
+import { NavLink, Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard,
@@ -19,6 +19,7 @@ import {
 
 export const AdminLayout: React.FC = () => {
   const { user, loading, isAdmin } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -28,27 +29,10 @@ export const AdminLayout: React.FC = () => {
     );
   }
 
-  // Strict role check: If unauthenticated or not admin, show clear message rather than silent redirect
+  // Not logged in -> Immediately redirect to login, preserving destination URL
   if (!user) {
-    return (
-      <div className="max-w-2xl mx-auto px-4 py-24 text-center space-y-6">
-        <div className="w-16 h-16 bg-deepteal border border-amber-500/50 rounded-2xl flex items-center justify-center mx-auto text-amber-400">
-          <ShieldAlert className="w-8 h-8" />
-        </div>
-        <h1 className="font-heading text-3xl font-extrabold uppercase text-icewhite">
-          Authentication Required
-        </h1>
-        <p className="text-xs text-subtext leading-relaxed">
-          The ARORA ESPORTS Operations Console requires an authenticated administrator session.
-        </p>
-        <NavLink
-          to="/login?redirect=/admin"
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-neongreen text-midnight font-heading font-bold text-xs uppercase tracking-wider"
-        >
-          Administrator Log In
-        </NavLink>
-      </div>
-    );
+    const targetUrl = location.pathname + location.search;
+    return <Navigate to={`/login?redirect=${encodeURIComponent(targetUrl)}`} replace />;
   }
 
   if (!isAdmin) {
