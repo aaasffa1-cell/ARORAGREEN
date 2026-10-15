@@ -16,7 +16,7 @@
     "migrate": "npm --prefix backend run migrate",
     "seed": "npm --prefix backend run seed",
     "provision:admin": "npm --prefix backend run provision:admin",
-    "vercel-build": "cd frontend && npm install && npm run build"
+    "vercel-build": "npm --prefix frontend run build"
   },
   "dependencies": {
     "@types/cookie-parser": "^1.4.8",
@@ -38,5 +38,8 @@
     "resend": "^4.0.0",
     "typescript": "^5.7.3",
     "zod": "^3.24.2"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.64.5"
   }
 }
