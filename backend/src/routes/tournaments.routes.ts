@@ -250,12 +250,21 @@ router.put('/:id', requireAdmin, async (req: Request, res: Response): Promise<vo
     }
 
     // Always keep matches.scheduled_time synchronized with the tournament's match_time
-    await pool.query(
-      `UPDATE matches
-       SET scheduled_time = $1, updated_at = NOW()
-       WHERE tournament_id = $2`,
-      [new Date(data.match_time), id]
-    );
+    try {
+      await pool.query(
+        `UPDATE matches
+         SET scheduled_time = $1, updated_at = NOW()
+         WHERE tournament_id = $2`,
+        [new Date(data.match_time), id]
+      );
+    } catch {
+      await pool.query(
+        `UPDATE matches
+         SET scheduled_time = $1
+         WHERE tournament_id = $2`,
+        [new Date(data.match_time), id]
+      );
+    }
 
     await recordAuditLog({
       actorId: req.user!.id,

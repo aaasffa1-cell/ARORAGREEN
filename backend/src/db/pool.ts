@@ -57,3 +57,17 @@ export async function withTransaction<T>(callback: (client: PoolClient) => Promi
     client.release();
   }
 }
+
+let schemaEnsured = false;
+export async function ensureSchemaConsistency(): Promise<void> {
+  if (schemaEnsured) return;
+  try {
+    await pool.query(`
+      ALTER TABLE matches ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+    `);
+    schemaEnsured = true;
+  } catch (err: any) {
+    console.warn('[Schema Consistency Warning]:', err.message);
+  }
+}
+

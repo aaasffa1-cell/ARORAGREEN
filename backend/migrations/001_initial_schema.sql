@@ -170,7 +170,8 @@ CREATE TABLE IF NOT EXISTS matches (
     status VARCHAR(30) NOT NULL DEFAULT 'Scheduled',
     credentials_released BOOLEAN NOT NULL DEFAULT FALSE,
     credentials_released_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_matches_tournament ON matches(tournament_id);
 

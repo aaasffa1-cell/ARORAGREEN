@@ -4,7 +4,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { authenticateSession } from './middleware/auth';
-import { pool } from './db/pool';
+import { pool, ensureSchemaConsistency } from './db/pool';
 import { getSmtpStatus, verifySmtpConnection } from './services/mailer';
 
 import authRouter from './routes/auth.routes';
@@ -19,6 +19,9 @@ import settingsRouter from './routes/settings.routes';
 import adminRouter from './routes/admin.routes';
 
 dotenv.config();
+
+// Ensure essential database columns (e.g. matches.updated_at) exist automatically
+ensureSchemaConsistency().catch((e) => console.warn('[AutoSchema Init]:', e.message));
 
 const app = express();
 const PORT = process.env.PORT || 4000;

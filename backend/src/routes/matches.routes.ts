@@ -9,8 +9,8 @@ const router = Router();
 
 const configureCredentialsSchema = z.object({
   match_id: z.string().uuid(),
-  room_id: z.string().min(2).max(100),
-  room_password: z.string().min(2).max(100),
+  room_id: z.string().min(1, 'Room ID is required').max(100),
+  room_password: z.string().min(1, 'Room Password is required').max(100),
   scheduled_time: z.string().optional(),
 });
 
@@ -73,7 +73,8 @@ router.post('/admin/credentials', requireAdmin, async (req: Request, res: Respon
   try {
     const parse = configureCredentialsSchema.safeParse(req.body);
     if (!parse.success) {
-      res.status(400).json({ error: 'Room ID and Room Password are required.' });
+      const issues = parse.error.issues.map((i) => i.message).join(' ');
+      res.status(400).json({ error: issues || 'Room ID and Room Password are required.' });
       return;
     }
 
@@ -92,10 +93,17 @@ router.post('/admin/credentials', requireAdmin, async (req: Request, res: Respon
     if (scheduled_time) {
       const parsedTime = new Date(scheduled_time);
       if (!isNaN(parsedTime.getTime())) {
-        await pool.query(
-          'UPDATE matches SET scheduled_time = $1, updated_at = NOW() WHERE id = $2',
-          [parsedTime, match_id]
-        );
+        try {
+          await pool.query(
+            'UPDATE matches SET scheduled_time = $1, updated_at = NOW() WHERE id = $2',
+            [parsedTime, match_id]
+          );
+        } catch {
+          await pool.query(
+            'UPDATE matches SET scheduled_time = $1 WHERE id = $2',
+            [parsedTime, match_id]
+          );
+        }
         await pool.query(
           'UPDATE tournaments SET match_time = $1, updated_at = NOW() WHERE id = $2',
           [parsedTime, tournamentId]
@@ -128,7 +136,7 @@ router.post('/admin/credentials', requireAdmin, async (req: Request, res: Respon
     res.json({ success: true, message: 'Custom room credentials saved successfully.' });
   } catch (err: any) {
     console.error('[Configure Room Error]:', err);
-    res.status(500).json({ error: 'Failed to configure room credentials.' });
+    res.status(500).json({ error: err.message || 'Failed to configure room credentials.' });
   }
 });
 
