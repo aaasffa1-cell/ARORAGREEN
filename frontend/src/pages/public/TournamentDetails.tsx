@@ -37,6 +37,7 @@ export const TournamentDetails: React.FC = () => {
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [mySquad, setMySquad] = useState<Squad | null>(null);
   const [myMembers, setMyMembers] = useState<SquadMember[]>([]);
+  const [isCaptain, setIsCaptain] = useState(true);
   const [squadLoading, setSquadLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [utrInput, setUtrInput] = useState('');
@@ -101,6 +102,7 @@ export const TournamentDetails: React.FC = () => {
       const res = await api.squads.getMySquad();
       setMySquad(res.squad);
       setMyMembers(res.members);
+      setIsCaptain(res.is_captain !== false);
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to check squad details.');
     } finally {
@@ -404,6 +406,31 @@ export const TournamentDetails: React.FC = () => {
               >
                 Go to Squad Roster Builder
               </Button>
+            </div>
+          ) : !isCaptain ? (
+            <div className="p-6 bg-midnight border border-cyan/40 rounded-xl space-y-4 text-center">
+              <Users className="w-8 h-8 text-cyan mx-auto" />
+              <h4 className="font-heading text-lg font-bold uppercase text-icewhite">
+                Squad Teammate Notice
+              </h4>
+              <p className="text-xs text-subtext leading-relaxed max-w-md mx-auto">
+                You are registered as a teammate in squad <strong className="text-cyan font-bold">{mySquad.name}</strong>.
+                Per official tournament rules, only the designated Squad Captain (<strong className="text-icewhite">{(mySquad as any).captain_display_name || (mySquad as any).captain_email}</strong>) can register and lock in slots.
+              </p>
+              <p className="text-xs text-subtext">
+                Please notify your Captain to submit registration for this tournament, or create your own squad as Captain.
+              </p>
+              <div className="flex justify-center gap-3 pt-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setIsRegisterModalOpen(false);
+                    navigate('/player/my-squad');
+                  }}
+                >
+                  View Squad Details
+                </Button>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleRegisterSubmit} className="space-y-6">

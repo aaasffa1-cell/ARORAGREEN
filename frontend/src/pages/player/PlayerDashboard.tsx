@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
-import { Registration, Squad, MatchRoomInfo } from '../../types';
+import { Registration, Squad, MatchRoomInfo, Tournament } from '../../types';
 import { Badge } from '../../components/ui/Badge';
+import { TournamentCard } from '../../components/ui/TournamentCard';
 import {
   Trophy,
   Users,
@@ -20,6 +21,7 @@ export const PlayerDashboard: React.FC = () => {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [squad, setSquad] = useState<Squad | null>(null);
   const [matchRooms, setMatchRooms] = useState<MatchRoomInfo[]>([]);
+  const [openTournaments, setOpenTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,11 +29,16 @@ export const PlayerDashboard: React.FC = () => {
       api.registrations.getMyRegistrations().catch(() => ({ registrations: [] })),
       api.squads.getMySquad().catch(() => ({ squad: null, members: [] })),
       api.matches.getMyRoom().catch(() => ({ rooms: [] })),
+      api.tournaments.list().catch(() => ({ tournaments: [] })),
     ])
-      .then(([regRes, sqRes, roomRes]) => {
+      .then(([regRes, sqRes, roomRes, tourRes]) => {
         setRegistrations(regRes.registrations || []);
         setSquad(sqRes.squad || null);
         setMatchRooms(roomRes.rooms || []);
+        const upcoming = (tourRes.tournaments || []).filter(
+          (t: Tournament) => t.status === 'Registration Open' || t.status === 'Published'
+        );
+        setOpenTournaments(upcoming);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -179,6 +186,46 @@ export const PlayerDashboard: React.FC = () => {
         ) : (
           <p className="text-xs text-subtext italic py-2">
             No upcoming match rooms scheduled for your squad. Register for an open tournament below.
+          </p>
+        )}
+      </div>
+
+      {/* Open & Upcoming Tournaments Available for Registration */}
+      <div className="bg-deepteal/30 border border-aroraborder rounded-xl p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-mono text-neongreen uppercase tracking-widest mb-1">
+              <Trophy className="w-4 h-4 text-neongreen" />
+              <span>CIRCUIT SCHEDULES</span>
+            </div>
+            <h2 className="font-heading text-xl font-bold uppercase tracking-wider text-icewhite">
+              Upcoming Tournaments (Open For Registration)
+            </h2>
+          </div>
+          <Link
+            to="/tournaments"
+            className="text-xs font-mono text-cyan hover:underline flex items-center gap-1 self-start sm:self-auto"
+          >
+            <span>View All Tournaments</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="h-64 bg-midnight/50 rounded-xl animate-pulse" />
+            <div className="h-64 bg-midnight/50 rounded-xl animate-pulse" />
+            <div className="h-64 bg-midnight/50 rounded-xl animate-pulse" />
+          </div>
+        ) : openTournaments.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {openTournaments.slice(0, 3).map((t) => (
+              <TournamentCard key={t.id} tournament={t} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-subtext italic py-2">
+            No tournaments currently open for registration. Check back soon for newly published tournament schedules!
           </p>
         )}
       </div>

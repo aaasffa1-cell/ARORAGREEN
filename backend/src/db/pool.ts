@@ -33,6 +33,34 @@ pool.on('error', (err: any) => {
   console.error('[DB Pool Error]: Unexpected error on idle client', err.message);
 });
 
+// Auto-retry wrapper for Neon PostgreSQL cold starts, serverless sleeps, and socket resets
+const rawPoolQuery = pool.query.bind(pool);
+(pool as any).query = async function (text: any, params?: any, callback?: any) {
+  if (typeof params === 'function' || typeof callback === 'function') {
+    return (rawPoolQuery as any)(text, params, callback);
+  }
+
+  try {
+    return await (rawPoolQuery as any)(text, params);
+  } catch (err: any) {
+    const isConnErr =
+      err.code === 'ECONNRESET' ||
+      err.code === '57P01' ||
+      err.code === '08006' ||
+      err.message?.includes('Connection terminated unexpectedly') ||
+      err.message?.includes('Client has encountered a connection error') ||
+      err.message?.includes('connection timeout') ||
+      err.message?.includes('socket closed');
+
+    if (isConnErr) {
+      console.warn('[DB Pool]: Retrying query after transient connection drop / Neon database wake-up...');
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      return await (rawPoolQuery as any)(text, params);
+    }
+    throw err;
+  }
+};
+
 export async function query<T = any>(text: string, params?: any[]): Promise<{ rows: T[]; rowCount: number }> {
   const start = Date.now();
   const res = await pool.query(text, params);

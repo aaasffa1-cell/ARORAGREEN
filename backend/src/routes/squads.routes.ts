@@ -24,7 +24,8 @@ const squadSchema = z.object({
 // GET /api/squads/my-squad (Get current player's squad)
 router.get('/my-squad', requireAuth, async (req: Request, res: Response): Promise<void> => {
   try {
-    const squadRes = await pool.query(
+    let isCaptain = true;
+    let squadRes = await pool.query(
       `SELECT s.*, u.email as captain_email, u.display_name as captain_display_name
        FROM squads s
        JOIN users u ON s.captain_id = u.id
@@ -33,7 +34,23 @@ router.get('/my-squad', requireAuth, async (req: Request, res: Response): Promis
     );
 
     if (squadRes.rows.length === 0) {
-      res.json({ squad: null, members: [] });
+      // Check if user is a member of another captain's squad
+      const memberSquadRes = await pool.query(
+        `SELECT s.*, u.email as captain_email, u.display_name as captain_display_name
+         FROM squad_members sm
+         JOIN squads s ON sm.squad_id = s.id
+         JOIN users u ON s.captain_id = u.id
+         WHERE sm.user_id = $1 OR (sm.email IS NOT NULL AND sm.email != '' AND LOWER(sm.email) = LOWER($2))`,
+        [req.user!.id, req.user!.email]
+      );
+      if (memberSquadRes.rows.length > 0) {
+        squadRes = memberSquadRes;
+        isCaptain = false;
+      }
+    }
+
+    if (squadRes.rows.length === 0) {
+      res.json({ squad: null, members: [], is_captain: false });
       return;
     }
 
@@ -50,6 +67,7 @@ router.get('/my-squad', requireAuth, async (req: Request, res: Response): Promis
     res.json({
       squad,
       members: membersRes.rows,
+      is_captain: isCaptain,
     });
   } catch (err: any) {
     console.error('[Get My Squad Error]:', err);

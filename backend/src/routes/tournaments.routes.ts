@@ -7,17 +7,21 @@ import { recordAuditLog } from '../services/audit';
 const router = Router();
 
 const tournamentSchema = z.object({
-  title: z.string().min(3).max(200),
-  description: z.string().optional(),
+  title: z.string().min(3, 'Title must be at least 3 characters').max(200),
+  description: z.string().optional().nullable(),
   game_title: z.string().default('Free Fire'),
   game_mode: z.string().min(2).max(50),
   map_name: z.string().min(2).max(100),
-  entry_fee: z.coerce.number().min(0),
-  prize_pool: z.coerce.number().min(0),
+  entry_fee: z.coerce.number().min(0, 'Entry fee cannot be negative'),
+  prize_pool: z.coerce.number().min(0, 'Prize pool cannot be negative'),
   max_squads: z.coerce.number().int().min(2).max(100),
-  registration_deadline: z.string(),
-  match_time: z.string(),
-  rules: z.string().optional(),
+  registration_deadline: z.string().refine((val) => !isNaN(new Date(val).getTime()), {
+    message: 'Valid registration deadline date & time is required.',
+  }),
+  match_time: z.string().refine((val) => !isNaN(new Date(val).getTime()), {
+    message: 'Valid match start date & time is required.',
+  }),
+  rules: z.string().optional().nullable(),
   status: z.enum([
     'Draft',
     'Published',
@@ -316,6 +320,73 @@ router.patch('/:id/status', requireAdmin, async (req: Request, res: Response): P
   } catch (err: any) {
     console.error('[Change Status Error]:', err);
     res.status(500).json({ error: 'Failed to update status.' });
+  }
+});
+
+// DELETE /api/tournaments/:id (Admin Delete Tournament)
+router.delete('/:id', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const tournamentRes = await pool.query('SELECT id, title FROM tournaments WHERE id = $1', [id]);
+    if (tournamentRes.rows.length === 0) {
+      res.status(404).json({ error: 'Tournament not found in database.' });
+      return;
+    }
+    const tournamentTitle = tournamentRes.rows[0].title;
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // 1. Delete payment verification history for payments referencing this tournament
+      await client.query(
+        `DELETE FROM payment_verification_history
+         WHERE payment_id IN (SELECT id FROM payments WHERE tournament_id = $1)`,
+        [id]
+      );
+
+      // 2. Delete payments referencing this tournament
+      await client.query('DELETE FROM payments WHERE tournament_id = $1', [id]);
+
+      // 3. Delete protected room credentials
+      await client.query('DELETE FROM protected_room_credentials WHERE tournament_id = $1', [id]);
+
+      // 4. Delete tournament results
+      await client.query('DELETE FROM tournament_results WHERE tournament_id = $1', [id]);
+
+      // 5. Delete matches
+      await client.query('DELETE FROM matches WHERE tournament_id = $1', [id]);
+
+      // 6. Delete registrations
+      await client.query('DELETE FROM registrations WHERE tournament_id = $1', [id]);
+
+      // 7. Clear or delete email logs
+      await client.query('DELETE FROM email_delivery_logs WHERE tournament_id = $1', [id]);
+
+      // 8. Delete the tournament itself
+      await client.query('DELETE FROM tournaments WHERE id = $1', [id]);
+
+      await recordAuditLog({
+        actorId: req.user!.id,
+        action: 'DELETE_TOURNAMENT',
+        targetEntity: 'tournaments',
+        targetId: id,
+        metadata: { title: tournamentTitle },
+        ipAddress: req.ip,
+      });
+
+      await client.query('COMMIT');
+      res.json({ success: true, message: `Tournament "${tournamentTitle}" and associated records deleted successfully.` });
+    } catch (txErr) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw txErr;
+    } finally {
+      client.release();
+    }
+  } catch (err: any) {
+    console.error('[Delete Tournament Error]:', err);
+    res.status(500).json({ error: err.message || 'Failed to delete tournament.' });
   }
 });
 

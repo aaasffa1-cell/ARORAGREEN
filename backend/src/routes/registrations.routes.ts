@@ -82,7 +82,13 @@ router.post('/', requireAuth, async (req: Request, res: Response): Promise<void>
       );
 
       if (existingReg.rows.length > 0) {
-        throw { statusCode: 409, message: 'Your squad is already registered for this tournament.' };
+        const prevStatus = existingReg.rows[0].status;
+        if (prevStatus !== 'Cancelled' && prevStatus !== 'Rejected') {
+          throw {
+            statusCode: 409,
+            message: `Your squad is already registered for this tournament (Status: ${prevStatus}).`,
+          };
+        }
       }
 
       // 5. Check tournament capacity
@@ -101,13 +107,24 @@ router.post('/', requireAuth, async (req: Request, res: Response): Promise<void>
       const isFree = parseFloat(tournament.entry_fee) === 0;
       const initialStatus = isFree ? 'Confirmed' : 'Pending Payment';
 
-      // 6. Create registration
-      const regInsert = await client.query(
-        `INSERT INTO registrations (tournament_id, squad_id, captain_id, status, slot_number)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING *`,
-        [tournament_id, squad_id, req.user!.id, initialStatus, nextSlot]
-      );
+      // 6. Create or re-activate registration
+      let regInsert;
+      if (existingReg.rows.length > 0) {
+        regInsert = await client.query(
+          `UPDATE registrations
+           SET captain_id = $1, status = $2, slot_number = $3, updated_at = NOW()
+           WHERE id = $4
+           RETURNING *`,
+          [req.user!.id, initialStatus, nextSlot, existingReg.rows[0].id]
+        );
+      } else {
+        regInsert = await client.query(
+          `INSERT INTO registrations (tournament_id, squad_id, captain_id, status, slot_number)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING *`,
+          [tournament_id, squad_id, req.user!.id, initialStatus, nextSlot]
+        );
+      }
 
       // Create notification for Captain
       await client.query(

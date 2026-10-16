@@ -34,7 +34,8 @@ export const PlayerLayout: React.FC = () => {
 
   const navItems = [
     { label: 'Overview', path: '/player', icon: LayoutDashboard, exact: true },
-    { label: 'My Tournaments', path: '/player/my-tournaments', icon: Trophy },
+    { label: 'Upcoming Tournaments', path: '/tournaments', icon: Trophy },
+    { label: 'My Registered Tournaments', path: '/player/my-tournaments', icon: Award },
     { label: 'My Squad (Roster)', path: '/player/my-squad', icon: Users },
     { label: 'My Payments', path: '/player/my-payments', icon: CreditCard },
     { label: 'Match Room', path: '/player/match-room', icon: DoorOpen },

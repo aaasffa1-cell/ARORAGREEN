@@ -4,7 +4,7 @@ import { Tournament } from '../../types';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
-import { Trophy, Plus, Edit, CheckCircle, AlertTriangle, Timer, Clock } from 'lucide-react';
+import { Trophy, Plus, Edit, CheckCircle, AlertTriangle, Timer, Clock, Trash2 } from 'lucide-react';
 import { DateTimePicker } from '../../components/common/DateTimePicker';
 import { TournamentStopwatch } from '../../components/common/TournamentStopwatch';
 
@@ -13,6 +13,7 @@ export const TournamentManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -98,19 +99,26 @@ export const TournamentManagement: React.FC = () => {
     setErrorMsg('');
 
     try {
+      if (!formData.registration_deadline || isNaN(new Date(formData.registration_deadline).getTime())) {
+        throw new Error('Please select a valid Registration Deadline date and time.');
+      }
+      if (!formData.match_time || isNaN(new Date(formData.match_time).getTime())) {
+        throw new Error('Please select a valid Match Start date and time.');
+      }
+
       if (editingId) {
         await api.tournaments.update(editingId, {
           ...formData,
-          entry_fee: parseFloat(formData.entry_fee),
-          prize_pool: parseFloat(formData.prize_pool),
-          max_squads: parseInt(formData.max_squads, 10),
+          entry_fee: parseFloat(formData.entry_fee) || 0,
+          prize_pool: parseFloat(formData.prize_pool) || 0,
+          max_squads: parseInt(formData.max_squads, 10) || 12,
         });
       } else {
         await api.tournaments.create({
           ...formData,
-          entry_fee: parseFloat(formData.entry_fee),
-          prize_pool: parseFloat(formData.prize_pool),
-          max_squads: parseInt(formData.max_squads, 10),
+          entry_fee: parseFloat(formData.entry_fee) || 0,
+          prize_pool: parseFloat(formData.prize_pool) || 0,
+          max_squads: parseInt(formData.max_squads, 10) || 12,
         });
       }
       setModalOpen(false);
@@ -128,6 +136,22 @@ export const TournamentManagement: React.FC = () => {
       loadTournaments();
     } catch (err: any) {
       alert(err.message || 'Failed to update status.');
+    }
+  };
+
+  const handleDeleteTournament = async (t: Tournament) => {
+    const confirmMsg = `Are you sure you want to PERMANENTLY DELETE tournament "${t.title}"?\n\nThis will remove the tournament, matches, and any associated registrations from the database.`;
+    if (!window.confirm(confirmMsg)) {
+      return;
+    }
+    setDeletingId(t.id);
+    try {
+      await api.tournaments.delete(t.id);
+      loadTournaments();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete tournament.');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -224,6 +248,16 @@ export const TournamentManagement: React.FC = () => {
                         className="px-2.5 py-1 rounded bg-deepteal border border-aroraborder text-icewhite text-[11px] font-mono hover:border-cyan"
                       >
                         Edit
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteTournament(t)}
+                        disabled={deletingId === t.id}
+                        className="px-2.5 py-1 rounded bg-rose-950/70 border border-rose-500/40 text-rose-300 text-[11px] font-mono hover:bg-rose-500/20 hover:border-rose-400 transition-colors inline-flex items-center gap-1"
+                        title="Delete Tournament"
+                      >
+                        <Trash2 className="w-3 h-3 text-rose-400" />
+                        <span>{deletingId === t.id ? 'Deleting...' : 'Delete'}</span>
                       </button>
                     </td>
                   </tr>

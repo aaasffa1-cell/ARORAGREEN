@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../services/api';
-import { UserCheck, Search, ShieldAlert, UserX, CheckCircle } from 'lucide-react';
+import { UserCheck, Search, ShieldAlert, UserX, CheckCircle, Trash2 } from 'lucide-react';
 
 export const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   const loadUsers = () => {
     setLoading(true);
@@ -29,6 +30,21 @@ export const UserManagement: React.FC = () => {
       loadUsers();
     } catch (err: any) {
       alert(err.message || 'Failed to modify account state.');
+    }
+  };
+
+  const handleDeleteUser = async (user: any) => {
+    const confirmPrompt = `Are you sure you want to PERMANENTLY DELETE user account:\n\nEmail: ${user.email}\nName: ${user.display_name || 'Player'}\n\nWARNING: This will permanently remove this user and their associated squads/registrations from the Neon database!`;
+    if (!window.confirm(confirmPrompt)) return;
+
+    setDeletingUserId(user.id);
+    try {
+      await api.admin.deleteUser(user.id);
+      loadUsers();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete user.');
+    } finally {
+      setDeletingUserId(null);
     }
   };
 
@@ -125,16 +141,28 @@ export const UserManagement: React.FC = () => {
                       )}
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => handleToggleSuspend(u)}
-                        className={`px-2.5 py-1 rounded text-xs font-mono font-bold transition-colors ${
-                          u.is_suspended
-                            ? 'bg-emerald-950 border border-neongreen text-neongreen hover:bg-emerald-900/40'
-                            : 'bg-rose-950 border border-rose-500 text-rose-300 hover:bg-rose-900/40'
-                        }`}
-                      >
-                        {u.is_suspended ? 'Reactivate' : 'Suspend'}
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleToggleSuspend(u)}
+                          className={`px-2.5 py-1 rounded text-xs font-mono font-bold transition-colors ${
+                            u.is_suspended
+                              ? 'bg-emerald-950 border border-neongreen text-neongreen hover:bg-emerald-900/40'
+                              : 'bg-amber-950 border border-amber-500/50 text-amber-300 hover:bg-amber-900/40'
+                          }`}
+                        >
+                          {u.is_suspended ? 'Reactivate' : 'Suspend'}
+                        </button>
+
+                        <button
+                          onClick={() => handleDeleteUser(u)}
+                          disabled={deletingUserId === u.id}
+                          className="px-2.5 py-1 rounded text-xs font-mono font-bold transition-colors bg-rose-950/80 border border-rose-500/60 text-rose-300 hover:bg-rose-900/60 hover:border-rose-400 flex items-center gap-1"
+                          title="Permanently Delete User from Neon DB"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                          <span>{deletingUserId === u.id ? 'Deleting...' : 'Delete'}</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

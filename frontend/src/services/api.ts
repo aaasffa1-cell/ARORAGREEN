@@ -23,7 +23,7 @@ function getApiBaseUrl(): string {
 
 const API_BASE = getApiBaseUrl().replace(/\/+$/, '');
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+async function request<T>(endpoint: string, options: RequestInit = {}, retries = 2): Promise<T> {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${API_BASE}${cleanEndpoint}`;
 
@@ -35,19 +35,46 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     ...(options.headers || {}),
   };
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-    credentials: 'include', // Ensures HTTP-only cookie is passed
-  });
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers,
+      credentials: 'include', // Ensures HTTP-only cookie is passed
+    });
 
-  const data = await response.json().catch(() => ({}));
+    const data = await response.json().catch(() => ({}));
 
-  if (!response.ok) {
-    throw new Error(data.error || `Request failed with status ${response.status}`);
+    if (!response.ok) {
+      if (response.status === 401 && endpoint !== '/auth/me') {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem('arora_session_token');
+        }
+      }
+      throw new Error(data.error || `Request failed with status ${response.status}`);
+    }
+
+    return data as T;
+  } catch (err: any) {
+    const isNetworkError =
+      err.name === 'TypeError' ||
+      err.message?.includes('Failed to fetch') ||
+      err.message?.includes('NetworkError') ||
+      err.message?.includes('network');
+
+    // Automatically retry on transient network drops or cold starts
+    if (isNetworkError && retries > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      return request<T>(endpoint, options, retries - 1);
+    }
+
+    if (isNetworkError) {
+      throw new Error(
+        'Connection error: Failed to reach the server. Please check your network connection or server status and try again.'
+      );
+    }
+
+    throw err;
   }
-
-  return data as T;
 }
 
 export const api = {
@@ -100,11 +127,15 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify({ status, publication_status }),
       }),
+    delete: (id: string) =>
+      request<{ success: boolean; message: string }>(`/tournaments/${id}`, {
+        method: 'DELETE',
+      }),
   },
 
   // Squads
   squads: {
-    getMySquad: () => request<{ squad: any; members: any[] }>('/squads/my-squad'),
+    getMySquad: () => request<{ squad: any; members: any[]; is_captain?: boolean }>('/squads/my-squad'),
     saveSquad: (data: any) => request<{ success: boolean; squad_id: string }>('/squads', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -223,6 +254,10 @@ export const api = {
       request<{ success: boolean }>(`/admin/users/${id}/suspend`, {
         method: 'PATCH',
         body: JSON.stringify({ is_suspended }),
+      }),
+    deleteUser: (id: string) =>
+      request<{ success: boolean; message: string }>(`/admin/users/${id}`, {
+        method: 'DELETE',
       }),
     getAuditLogs: () => request<{ audit_logs: any[] }>('/admin/audit-logs'),
     getDeliveryLogs: () => request<{ delivery_logs: any[] }>('/admin/delivery-logs'),

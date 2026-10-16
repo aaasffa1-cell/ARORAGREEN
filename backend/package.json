@@ -10,7 +10,8 @@
     "migrate": "ts-node src/scripts/migrate.ts",
     "seed": "ts-node src/scripts/seed.ts",
     "provision:admin": "ts-node src/scripts/provision-admin.ts",
-    "test:workflow": "ts-node src/scripts/test-workflow.ts"
+    "test:workflow": "ts-node src/scripts/test-workflow.ts",
+    "delete:user": "ts-node src/scripts/delete-user.ts"
   },
   "dependencies": {
     "@types/cookie-parser": "^1.4.8",

@@ -25,17 +25,27 @@ export const MyTournaments: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <div className="flex items-center gap-2 text-xs font-mono text-neongreen uppercase tracking-widest mb-1">
-          <Trophy className="w-4 h-4 text-neongreen" />
-          <span>SQUAD CAMPAIGNS</span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-mono text-neongreen uppercase tracking-widest mb-1">
+            <Trophy className="w-4 h-4 text-neongreen" />
+            <span>SQUAD CAMPAIGNS</span>
+          </div>
+          <h1 className="font-heading text-3xl font-extrabold uppercase text-icewhite">
+            My Registered Tournaments
+          </h1>
+          <p className="text-xs text-subtext mt-1">
+            Review your registered slots, payment audit statuses, and access your custom match room.
+          </p>
         </div>
-        <h1 className="font-heading text-3xl font-extrabold uppercase text-icewhite">
-          My Registered Tournaments
-        </h1>
-        <p className="text-xs text-subtext mt-1">
-          Review your registered slots, payment audit statuses, and access your custom match room.
-        </p>
+
+        <Link
+          to="/tournaments"
+          className="px-4 py-2.5 rounded-lg bg-neongreen hover:bg-emerald-400 text-midnight text-xs font-heading font-bold uppercase tracking-wider shadow-neon flex items-center gap-2 self-start sm:self-auto transition-transform active:scale-95"
+        >
+          <Trophy className="w-4 h-4 text-midnight" />
+          <span>Register For Upcoming Tournaments</span>
+        </Link>
       </div>
 
       {registrations.length > 0 ? (

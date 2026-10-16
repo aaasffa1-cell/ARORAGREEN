@@ -135,6 +135,116 @@ router.patch('/users/:id/suspend', async (req: Request, res: Response): Promise<
   }
 });
 
+// DELETE /api/admin/users/:id (Admin Delete User Account from Neon DB)
+router.delete('/users/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    if (id === req.user!.id) {
+      res.status(400).json({ error: 'You cannot delete your own administrative account.' });
+      return;
+    }
+
+    const userRes = await pool.query('SELECT id, email, display_name FROM users WHERE id = $1', [id]);
+    if (userRes.rows.length === 0) {
+      res.status(404).json({ error: 'User not found in database.' });
+      return;
+    }
+    const targetUser = userRes.rows[0];
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // 1. Identify all squads where this user is Captain
+      const squadsRes = await client.query('SELECT id FROM squads WHERE captain_id = $1', [id]);
+      const squadIds = squadsRes.rows.map((r: { id: string }) => r.id);
+
+      if (squadIds.length > 0) {
+        // Delete payment verification history for payments made by these squads
+        await client.query(
+          `DELETE FROM payment_verification_history
+           WHERE payment_id IN (SELECT id FROM payments WHERE squad_id = ANY($1) OR captain_id = $2)`,
+          [squadIds, id]
+        );
+
+        // Delete payments
+        await client.query('DELETE FROM payments WHERE squad_id = ANY($1) OR captain_id = $2', [squadIds, id]);
+
+        // Delete tournament results
+        await client.query('DELETE FROM tournament_results WHERE squad_id = ANY($1)', [squadIds]);
+
+        // Delete registrations
+        await client.query('DELETE FROM registrations WHERE squad_id = ANY($1) OR captain_id = $2', [squadIds, id]);
+
+        // Delete squad members of captained squads
+        await client.query('DELETE FROM squad_members WHERE squad_id = ANY($1)', [squadIds]);
+
+        // Delete captained squads
+        await client.query('DELETE FROM squads WHERE captain_id = $1', [id]);
+      } else {
+        // Clear any payments or registrations referencing this user directly
+        await client.query(
+          `DELETE FROM payment_verification_history
+           WHERE payment_id IN (SELECT id FROM payments WHERE captain_id = $1)`,
+          [id]
+        );
+        await client.query('DELETE FROM payments WHERE captain_id = $1', [id]);
+        await client.query('DELETE FROM registrations WHERE captain_id = $1', [id]);
+      }
+
+      // 2. Remove user link from any teammate squad_members records
+      await client.query('DELETE FROM squad_members WHERE user_id = $1', [id]);
+
+      // 3. Reassign reviewer references in audit tables to current acting admin
+      await client.query('UPDATE payments SET reviewer_id = NULL WHERE reviewer_id = $1', [id]);
+      await client.query(
+        'UPDATE payment_verification_history SET reviewer_id = $2 WHERE reviewer_id = $1',
+        [id, req.user!.id]
+      );
+
+      // 4. Nullify non-critical audit/logging links
+      await client.query('UPDATE protected_room_credentials SET release_initiated_by = NULL WHERE release_initiated_by = $1', [id]);
+      await client.query('UPDATE tournament_results SET published_by = NULL WHERE published_by = $1', [id]);
+      await client.query('UPDATE tournaments SET created_by = NULL WHERE created_by = $1', [id]);
+      await client.query('UPDATE email_delivery_logs SET recipient_id = NULL WHERE recipient_id = $1', [id]);
+      await client.query('UPDATE audit_logs SET actor_id = NULL WHERE actor_id = $1', [id]);
+      await client.query('UPDATE website_settings SET updated_by = NULL WHERE updated_by = $1', [id]);
+
+      // 5. Delete sessions, notifications, and user roles
+      await client.query('DELETE FROM sessions WHERE user_id = $1', [id]);
+      await client.query('DELETE FROM notifications WHERE user_id = $1', [id]);
+      await client.query('DELETE FROM user_roles WHERE user_id = $1', [id]);
+
+      // 6. Delete OTP challenges
+      await client.query('DELETE FROM otp_challenges WHERE email = $1', [targetUser.email]);
+
+      // 7. Finally delete the user row from Neon DB
+      await client.query('DELETE FROM users WHERE id = $1', [id]);
+
+      await recordAuditLog({
+        actorId: req.user!.id,
+        action: 'DELETE_USER',
+        targetEntity: 'users',
+        targetId: id,
+        metadata: { email: targetUser.email, display_name: targetUser.display_name },
+        ipAddress: req.ip,
+      });
+
+      await client.query('COMMIT');
+      res.json({ success: true, message: `User "${targetUser.email}" permanently deleted from database.` });
+    } catch (txErr) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw txErr;
+    } finally {
+      client.release();
+    }
+  } catch (err: any) {
+    console.error('[Delete User Error]:', err);
+    res.status(500).json({ error: err.message || 'Failed to delete user.' });
+  }
+});
+
 // GET /api/admin/audit-logs (View Audit Trail)
 router.get('/audit-logs', async (req: Request, res: Response): Promise<void> => {
   try {
